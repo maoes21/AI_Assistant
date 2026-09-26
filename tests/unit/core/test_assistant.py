@@ -11,3 +11,9 @@ def test_assistant_has_client():
     assistant = Assistant()
 
     assert assistant.client is not None
+
+
+def test_assistant_starts_with_empty_conversation():
+    assistant = Assistant()
+
+    assert assistant.conversation == []

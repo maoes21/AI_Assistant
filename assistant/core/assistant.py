@@ -12,16 +12,28 @@ class Assistant:
             api_key="local",
         )
         self.model = model
+        self.conversation = []
 
     def chat(self, message: str) -> str:
-        response = self.client.chat.completions.create(
-            model=self.model,
-            messages=[
-                {
-                    "role": "user",
-                    "content": message,
-                }
-            ],
+        self.conversation.append(
+            {
+                "role": "user",
+                "content": message,
+            }
         )
 
-        return response.choices[0].message.content
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=self.conversation,
+        )
+
+        assistant_message = response.choices[0].message.content
+
+        self.conversation.append(
+            {
+                "role": "assistant",
+                "content": assistant_message,
+            }
+        )
+
+        return assistant_message
