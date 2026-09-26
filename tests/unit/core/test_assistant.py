@@ -59,3 +59,18 @@ def test_memory_persists_between_assistants(tmp_path):
     ]
 
     second_assistant.close()
+
+
+def test_assistant_can_retrieve_memories(tmp_path):
+    database_path = tmp_path / "memory.db"
+    database = MemoryDatabase(str(database_path))
+
+    assistant = Assistant(memory_database=database)
+
+    assistant.remember("My dog is named Max.")
+
+    assert assistant.get_memories() == [
+        "My dog is named Max."
+    ]
+
+    assistant.close()

@@ -26,9 +26,33 @@ class Assistant:
             }
         )
 
+        relevant_memories = self.memory.search_memories(message)
+
+        messages = []
+
+        if relevant_memories:
+            memory_context = "\n".join(
+                f"- {memory}"
+                for memory in relevant_memories
+            )
+
+            messages.append(
+                {
+                    "role": "system",
+                    "content": (
+                        "You have access to the following long-term "
+                        "memories about the user. Use them when they "
+                        "are relevant to the current conversation.\n\n"
+                        f"{memory_context}"
+                    ),
+                }
+            )
+
+        messages.extend(self.conversation)
+
         response = self.client.chat.completions.create(
             model=self.model,
-            messages=self.conversation,
+            messages=messages,
         )
 
         assistant_message = response.choices[0].message.content

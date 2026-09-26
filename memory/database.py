@@ -47,5 +47,38 @@ class MemoryDatabase:
 
         return [row[0] for row in cursor.fetchall()]
 
+    def search_memories(self, query: str) -> list[str]:
+        words = [
+            word.strip(".,!?;:()[]{}\"'")
+            for word in query.lower().split()
+        ]
+
+        words = [word for word in words if word]
+
+        if not words:
+            return []
+
+        conditions = " OR ".join(
+            "LOWER(content) LIKE ?"
+            for _ in words
+        )
+
+        parameters = [
+            f"%{word}%"
+            for word in words
+        ]
+
+        cursor = self.connection.execute(
+            f"""
+            SELECT content
+            FROM memories
+            WHERE {conditions}
+            ORDER BY created_at ASC
+            """,
+            parameters,
+        )
+
+        return [row[0] for row in cursor.fetchall()]
+
     def close(self) -> None:
         self.connection.close()
