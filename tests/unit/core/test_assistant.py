@@ -81,3 +81,17 @@ def test_assistant_can_retrieve_memories(tmp_path):
     ]
 
     assistant.close()
+
+
+def test_assistant_automatically_remembers(tmp_path):
+    database = MemoryDatabase(str(tmp_path / "memory.db"))
+    manager = MemoryManager(database)
+    assistant = Assistant(memory_manager=manager)
+
+    assistant.chat("My favorite color is green.")
+
+    assert assistant.get_memories() == [
+        "My favorite color is green."
+    ]
+
+    assistant.close()

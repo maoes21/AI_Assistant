@@ -1,6 +1,7 @@
 from openai import OpenAI
 
 from memory.manager import MemoryManager
+from memory.detector import MemoryDetector
 
 
 class Assistant:
@@ -9,6 +10,7 @@ class Assistant:
         base_url: str = "http://127.0.0.1:8080/v1",
         model: str = "Qwen3-8B",
         memory_manager: MemoryManager | None = None,
+        memory_detector: MemoryDetector | None = None,
     ):
         self.client = OpenAI(
             base_url=base_url,
@@ -17,16 +19,17 @@ class Assistant:
         self.model = model
         self.conversation = []
         self.memory = memory_manager or MemoryManager()
+        self.memory_detector = memory_detector or MemoryDetector()
 
     def chat(self, message: str) -> str:
+        if self.memory_detector.should_remember(message):
+            self.memory.remember(message)
+
         self.conversation.append(
-            {
-                "role": "user",
-                "content": message,
-            }
+            {"role": "user", "content": message}
         )
 
-        relevant_memories = self.memory.search_memories(message)
+        relevant_memories = self.memory.search(message)
 
         messages = []
 
