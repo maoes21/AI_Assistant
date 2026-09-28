@@ -91,7 +91,33 @@ def test_assistant_automatically_remembers(tmp_path):
     assistant.chat("My favorite color is green.")
 
     assert assistant.get_memories() == [
-        "My favorite color is green."
+        "User's favorite color is green."
     ]
+
+    assistant.close()
+
+
+def test_assistant_stores_memory_candidate(tmp_path):
+    database = MemoryDatabase(str(tmp_path / "memory.db"))
+    manager = MemoryManager(database)
+    assistant = Assistant(memory_manager=manager)
+
+    assistant.chat("My favorite color is green.")
+
+    assert assistant.get_memories() == [
+        "User's favorite color is green."
+    ]
+
+    assistant.close()
+
+
+def test_assistant_does_not_store_non_memory_message(tmp_path):
+    database = MemoryDatabase(str(tmp_path / "memory.db"))
+    manager = MemoryManager(database)
+    assistant = Assistant(memory_manager=manager)
+
+    assistant.chat("What is the capital of France?")
+
+    assert assistant.get_memories() == []
 
     assistant.close()

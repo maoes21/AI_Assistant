@@ -22,8 +22,10 @@ class Assistant:
         self.memory_detector = memory_detector or MemoryDetector()
 
     def chat(self, message: str) -> str:
-        if self.memory_detector.should_remember(message):
-            self.memory.remember(message)
+        candidate = self.memory_detector.detect(message)
+
+        if candidate is not None:
+            self.memory.remember(candidate.content)
 
         self.conversation.append(
             {"role": "user", "content": message}
