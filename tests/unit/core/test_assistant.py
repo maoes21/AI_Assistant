@@ -1,7 +1,23 @@
+from types import SimpleNamespace
+from unittest.mock import Mock
+
+from memory.candidate import MemoryCandidate
 from memory.database import MemoryDatabase
 from memory.manager import MemoryManager
 
 from assistant.core.assistant import Assistant
+
+
+def create_response(content: str):
+    return SimpleNamespace(
+        choices=[
+            SimpleNamespace(
+                message=SimpleNamespace(
+                    content=content
+                )
+            )
+        ]
+    )
 
 
 def test_assistant_uses_configured_model():
@@ -34,7 +50,12 @@ def test_assistant_can_remember(tmp_path):
 
     assistant = Assistant(memory_manager=manager)
 
-    assistant.remember("My dog is named Max.")
+    assistant.remember(
+        MemoryCandidate(
+            key="pet_dog",
+            content="My dog is named Max.",
+        )
+    )
 
     assert assistant.get_memories() == [
         "My dog is named Max."
@@ -50,7 +71,13 @@ def test_memory_persists_between_assistants(tmp_path):
     first_manager = MemoryManager(first_database)
     first_assistant = Assistant(memory_manager=first_manager)
 
-    first_assistant.remember("My favorite color is green.")
+    first_assistant.remember(
+        MemoryCandidate(
+            key="favorite_color",
+            content="My favorite color is green.",
+        )
+    )
+
     first_assistant.close()
 
     second_database = MemoryDatabase(str(database_path))
@@ -70,7 +97,12 @@ def test_assistant_can_retrieve_memories(tmp_path):
 
     assistant = Assistant(memory_manager=manager)
 
-    assistant.remember("My dog is named Max.")
+    assistant.remember(
+        MemoryCandidate(
+            key="pet_dog",
+            content="My dog is named Max.",
+        )
+    )
 
     assert assistant.get_memories() == [
         "My dog is named Max."
@@ -83,41 +115,217 @@ def test_assistant_can_retrieve_memories(tmp_path):
     assistant.close()
 
 
-def test_assistant_automatically_remembers(tmp_path):
+def test_assistant_stores_extracted_memory_candidates(tmp_path):
     database = MemoryDatabase(str(tmp_path / "memory.db"))
     manager = MemoryManager(database)
-    assistant = Assistant(memory_manager=manager)
 
-    assistant.chat("My favorite color is green.")
+    extractor = Mock()
+    extractor.extract.return_value = [
+        MemoryCandidate(
+            key="favorite_color",
+            content="User's favorite color is green.",
+        ),
+        MemoryCandidate(
+            key="location",
+            content="User lives in Denmark.",
+        ),
+    ]
+
+    assistant = Assistant(
+        memory_manager=manager,
+        memory_extractor=extractor,
+    )
+
+    assistant.client.chat.completions.create = Mock(
+        return_value=create_response("Okay.")
+    )
+
+    assistant.chat("I'm Alex and I live in Denmark.")
 
     assert assistant.get_memories() == [
-        "User's favorite color is green."
+        "User's favorite color is green.",
+        "User lives in Denmark.",
     ]
+
+    extractor.extract.assert_called_once_with(
+        "I'm Alex and I live in Denmark."
+    )
 
     assistant.close()
 
 
-def test_assistant_stores_memory_candidate(tmp_path):
+def test_assistant_does_not_store_when_extractor_finds_nothing(
+    tmp_path,
+):
     database = MemoryDatabase(str(tmp_path / "memory.db"))
     manager = MemoryManager(database)
-    assistant = Assistant(memory_manager=manager)
 
-    assistant.chat("My favorite color is green.")
+    extractor = Mock()
+    extractor.extract.return_value = []
 
-    assert assistant.get_memories() == [
-        "User's favorite color is green."
-    ]
+    assistant = Assistant(
+        memory_manager=manager,
+        memory_extractor=extractor,
+    )
 
-    assistant.close()
-
-
-def test_assistant_does_not_store_non_memory_message(tmp_path):
-    database = MemoryDatabase(str(tmp_path / "memory.db"))
-    manager = MemoryManager(database)
-    assistant = Assistant(memory_manager=manager)
+    assistant.client.chat.completions.create = Mock(
+        return_value=create_response("Paris.")
+    )
 
     assistant.chat("What is the capital of France?")
 
     assert assistant.get_memories() == []
+
+    extractor.extract.assert_called_once_with(
+        "What is the capital of France?"
+    )
+
+    assistant.close()
+
+
+def test_assistant_updates_existing_memory(tmp_path):
+    database = MemoryDatabase(str(tmp_path / "memory.db"))
+    manager = MemoryManager(database)
+
+    extractor = Mock()
+    extractor.extract.side_effect = [
+        [
+            MemoryCandidate(
+                key="favorite_color",
+                content="User's favorite color is green.",
+            )
+        ],
+        [
+            MemoryCandidate(
+                key="favorite_color",
+                content="User's favorite color is blue.",
+            )
+        ],
+    ]
+
+    assistant = Assistant(
+        memory_manager=manager,
+        memory_extractor=extractor,
+    )
+
+    assistant.client.chat.completions.create = Mock(
+        side_effect=[
+            create_response("I'll remember that."),
+            create_response("Got it."),
+        ]
+    )
+
+    assistant.chat("My favorite color is green.")
+
+    assistant.chat("My favorite color is blue now.")
+
+    assert assistant.get_memories() == [
+        "User's favorite color is blue.",
+    ]
+
+    assistant.close()
+
+
+def test_assistant_includes_relevant_memories_in_model_request(
+    tmp_path,
+):
+    database = MemoryDatabase(str(tmp_path / "memory.db"))
+    manager = MemoryManager(database)
+
+    manager.remember(
+        MemoryCandidate(
+            key="pet_dog",
+            content="User has a dog named Max.",
+        )
+    )
+
+    manager.remember(
+        MemoryCandidate(
+            key="favorite_color",
+            content="User's favorite color is green.",
+        )
+    )
+
+    extractor = Mock()
+    extractor.extract.return_value = []
+
+    assistant = Assistant(
+        memory_manager=manager,
+        memory_extractor=extractor,
+    )
+
+    assistant.client.chat.completions.create = Mock(
+        return_value=create_response("Max is your dog.")
+    )
+
+    assistant.chat("Tell me about my dog.")
+
+    request = (
+        assistant.client
+        .chat.completions
+        .create
+        .call_args
+    )
+
+    messages = request.kwargs["messages"]
+
+    assert messages[0]["role"] == "system"
+
+    assert (
+        "User has a dog named Max."
+        in messages[0]["content"]
+    )
+
+    assert (
+        "User's favorite color is green."
+        not in messages[0]["content"]
+    )
+
+    assistant.close()
+
+
+def test_assistant_preserves_conversation_messages(
+    tmp_path,
+):
+    database = MemoryDatabase(str(tmp_path / "memory.db"))
+    manager = MemoryManager(database)
+
+    extractor = Mock()
+    extractor.extract.return_value = []
+
+    assistant = Assistant(
+        memory_manager=manager,
+        memory_extractor=extractor,
+    )
+
+    assistant.client.chat.completions.create = Mock(
+        side_effect=[
+            create_response("First response."),
+            create_response("Second response."),
+        ]
+    )
+
+    assistant.chat("Hello.")
+
+    assistant.chat("How are you?")
+
+    assert assistant.conversation == [
+        {
+            "role": "user",
+            "content": "Hello.",
+        },
+        {
+            "role": "assistant",
+            "content": "First response.",
+        },
+        {
+            "role": "user",
+            "content": "How are you?",
+        },
+        {
+            "role": "assistant",
+            "content": "Second response.",
+        },
+    ]
 
     assistant.close()
