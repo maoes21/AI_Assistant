@@ -39,7 +39,7 @@ def test_assistant_has_client():
 def test_assistant_starts_with_empty_conversation():
     assistant = Assistant()
 
-    assert assistant.conversation == []
+    assert assistant.conversation.get_messages() == []
 
     assistant.close()
 
@@ -309,7 +309,7 @@ def test_assistant_preserves_conversation_messages(
 
     assistant.chat("How are you?")
 
-    assert assistant.conversation == [
+    assert assistant.conversation.get_messages() == [
         {
             "role": "user",
             "content": "Hello.",

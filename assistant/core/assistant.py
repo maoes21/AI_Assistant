@@ -1,3 +1,4 @@
+from assistant.core.conversation import Conversation
 from assistant.core.llm import LLMClient
 from memory.extractor import MemoryExtractor
 from memory.manager import MemoryManager
@@ -19,7 +20,8 @@ class Assistant:
 
         self.client = self.llm.client
         self.model = self.llm.model
-        self.conversation = []
+
+        self.conversation = Conversation()
 
         self.memory = memory_manager or MemoryManager()
 
@@ -33,9 +35,7 @@ class Assistant:
         for candidate in memory_candidates:
             self.memory.remember(candidate)
 
-        self.conversation.append(
-            {"role": "user", "content": message}
-        )
+        self.conversation.add_user_message(message)
 
         relevant_memories = self.memory.search(message)
 
@@ -59,15 +59,14 @@ class Assistant:
                 }
             )
 
-        messages.extend(self.conversation)
+        messages.extend(
+            self.conversation.get_messages()
+        )
 
         assistant_message = self.llm.chat(messages)
 
-        self.conversation.append(
-            {
-                "role": "assistant",
-                "content": assistant_message,
-            }
+        self.conversation.add_assistant_message(
+            assistant_message
         )
 
         return assistant_message
