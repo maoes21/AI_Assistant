@@ -39,17 +39,32 @@ class MemoryExtractor:
                         "facts that are not about the user.\n\n"
                         "For every memory, provide:\n"
                         "- key: a stable identifier for the specific fact\n"
-                        "- content: a concise factual statement about the user\n\n"
+                        "- content: a complete, concise factual statement "
+                        "about the user\n\n"
+                        "IMPORTANT: The content must contain the complete "
+                        "fact, not only the value of the fact. It must be "
+                        "understandable on its own without the original "
+                        "user message.\n\n"
+                        "For example, if the user says "
+                        "\"My favorite programming language is Python.\", "
+                        "return content such as "
+                        "\"My favorite programming language is Python.\" "
+                        "Do NOT return only \"Python\".\n\n"
+                        "If the user says "
+                        "\"I have a dog named Max and I live in Denmark.\", "
+                        "extract both facts separately, for example:\n"
+                        "- \"My dog's name is Max.\"\n"
+                        "- \"I live in Denmark.\"\n\n"
                         "Use the same key whenever the same fact is "
                         "mentioned again. For example, the user's favorite "
                         "color should use the key 'favorite_color'.\n\n"
                         "Return ONLY valid JSON in this exact format:\n"
-                        '{"memories": ['
-                        '{"key": "example_key", '
-                        '"content": "Example memory."}'
+                        "{\"memories\": ["
+                        "{\"key\": \"example_key\", "
+                        "\"content\": \"Example memory.\"}"
                         "]}\n\n"
                         "If there is nothing worth remembering, return:\n"
-                        '{"memories": []}\n\n'
+                        "{\"memories\": []}\n\n"
                         "Do not include explanations."
                     ),
                 },
