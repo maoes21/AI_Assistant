@@ -1,5 +1,6 @@
 from assistant.core.conversation import Conversation
 from assistant.core.llm import LLMClient
+from assistant.core.message_builder import MessageBuilder
 from memory.extractor import MemoryExtractor
 from memory.manager import MemoryManager
 
@@ -12,6 +13,7 @@ class Assistant:
         memory_manager: MemoryManager | None = None,
         memory_extractor: MemoryExtractor | None = None,
         llm_client: LLMClient | None = None,
+        message_builder: MessageBuilder | None = None,
     ):
         self.llm = llm_client or LLMClient(
             base_url=base_url,
@@ -29,6 +31,10 @@ class Assistant:
             llm=self.llm,
         )
 
+        self.message_builder = (
+            message_builder or MessageBuilder()
+        )
+
     def chat(self, message: str) -> str:
         memory_candidates = self.memory_extractor.extract(message)
 
@@ -39,28 +45,11 @@ class Assistant:
 
         relevant_memories = self.memory.search(message)
 
-        messages = []
-
-        if relevant_memories:
-            memory_context = "\n".join(
-                f"- {memory}"
-                for memory in relevant_memories
-            )
-
-            messages.append(
-                {
-                    "role": "system",
-                    "content": (
-                        "You have access to the following long-term "
-                        "memories about the user. Use them when they "
-                        "are relevant to the current conversation.\n\n"
-                        f"{memory_context}"
-                    ),
-                }
-            )
-
-        messages.extend(
-            self.conversation.get_messages()
+        messages = self.message_builder.build(
+            conversation_messages=(
+                self.conversation.get_messages()
+            ),
+            relevant_memories=relevant_memories,
         )
 
         assistant_message = self.llm.chat(messages)
