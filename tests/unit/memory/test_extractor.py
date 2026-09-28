@@ -1,32 +1,19 @@
-from types import SimpleNamespace
 from unittest.mock import Mock
 
 from memory.extractor import MemoryExtractor
 
 
-def create_response(content: str):
-    return SimpleNamespace(
-        choices=[
-            SimpleNamespace(
-                message=SimpleNamespace(
-                    content=content
-                )
-            )
-        ]
-    )
-
-
 def test_extractor_returns_memory_candidates():
-    client = Mock()
+    llm = Mock()
 
-    client.chat.completions.create.return_value = create_response(
+    llm.chat.return_value = (
         '{"memories": ['
         '{"key": "favorite_color", '
         '"content": "User\'s favorite color is green."}'
         ']}'
     )
 
-    extractor = MemoryExtractor(client)
+    extractor = MemoryExtractor(llm)
 
     candidates = extractor.extract(
         "Green has always been my favorite color."
@@ -38,9 +25,9 @@ def test_extractor_returns_memory_candidates():
 
 
 def test_extractor_can_return_multiple_memories():
-    client = Mock()
+    llm = Mock()
 
-    client.chat.completions.create.return_value = create_response(
+    llm.chat.return_value = (
         '{"memories": ['
         '{"key": "location", '
         '"content": "User lives in Denmark."}, '
@@ -49,7 +36,7 @@ def test_extractor_can_return_multiple_memories():
         ']}'
     )
 
-    extractor = MemoryExtractor(client)
+    extractor = MemoryExtractor(llm)
 
     candidates = extractor.extract(
         "I live in Denmark and my dog is named Max."
@@ -65,13 +52,11 @@ def test_extractor_can_return_multiple_memories():
 
 
 def test_extractor_returns_no_memories_when_model_finds_none():
-    client = Mock()
+    llm = Mock()
 
-    client.chat.completions.create.return_value = create_response(
-        '{"memories": []}'
-    )
+    llm.chat.return_value = '{"memories": []}'
 
-    extractor = MemoryExtractor(client)
+    extractor = MemoryExtractor(llm)
 
     candidates = extractor.extract(
         "What is the capital of France?"
@@ -81,23 +66,21 @@ def test_extractor_returns_no_memories_when_model_finds_none():
 
 
 def test_extractor_returns_no_memories_for_empty_message():
-    client = Mock()
+    llm = Mock()
 
-    extractor = MemoryExtractor(client)
+    extractor = MemoryExtractor(llm)
 
     assert extractor.extract("") == []
 
-    client.chat.completions.create.assert_not_called()
+    llm.chat.assert_not_called()
 
 
 def test_extractor_handles_invalid_json():
-    client = Mock()
+    llm = Mock()
 
-    client.chat.completions.create.return_value = create_response(
-        "This is not valid JSON."
-    )
+    llm.chat.return_value = "This is not valid JSON."
 
-    extractor = MemoryExtractor(client)
+    extractor = MemoryExtractor(llm)
 
     candidates = extractor.extract(
         "My favorite color is green."

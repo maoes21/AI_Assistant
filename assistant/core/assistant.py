@@ -1,5 +1,4 @@
-from openai import OpenAI
-
+from assistant.core.llm import LLMClient
 from memory.extractor import MemoryExtractor
 from memory.manager import MemoryManager
 
@@ -11,17 +10,21 @@ class Assistant:
         model: str = "Qwen3-8B",
         memory_manager: MemoryManager | None = None,
         memory_extractor: MemoryExtractor | None = None,
+        llm_client: LLMClient | None = None,
     ):
-        self.client = OpenAI(
+        self.llm = llm_client or LLMClient(
             base_url=base_url,
-            api_key="local",
+            model=model,
         )
-        self.model = model
+
+        self.client = self.llm.client
+        self.model = self.llm.model
         self.conversation = []
+
         self.memory = memory_manager or MemoryManager()
+
         self.memory_extractor = memory_extractor or MemoryExtractor(
-            client=self.client,
-            model=self.model,
+            llm=self.llm,
         )
 
     def chat(self, message: str) -> str:
@@ -58,12 +61,7 @@ class Assistant:
 
         messages.extend(self.conversation)
 
-        response = self.client.chat.completions.create(
-            model=self.model,
-            messages=messages,
-        )
-
-        assistant_message = response.choices[0].message.content
+        assistant_message = self.llm.chat(messages)
 
         self.conversation.append(
             {

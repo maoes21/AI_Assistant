@@ -1,18 +1,15 @@
 import json
 
-from openai import OpenAI
-
+from assistant.core.llm import LLMClient
 from memory.candidate import MemoryCandidate
 
 
 class MemoryExtractor:
     def __init__(
         self,
-        client: OpenAI,
-        model: str = "Qwen3-8B",
+        llm: LLMClient,
     ):
-        self.client = client
-        self.model = model
+        self.llm = llm
 
     def extract(self, message: str) -> list[MemoryCandidate]:
         message = message.strip()
@@ -20,9 +17,8 @@ class MemoryExtractor:
         if not message:
             return []
 
-        response = self.client.chat.completions.create(
-            model=self.model,
-            messages=[
+        response = self.llm.chat(
+            [
                 {
                     "role": "system",
                     "content": (
@@ -75,13 +71,11 @@ class MemoryExtractor:
             ],
         )
 
-        content = response.choices[0].message.content
-
-        if not content:
+        if not response:
             return []
 
         try:
-            data = json.loads(content)
+            data = json.loads(response)
         except json.JSONDecodeError:
             return []
 
