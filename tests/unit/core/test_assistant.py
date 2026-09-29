@@ -376,3 +376,53 @@ def test_assistant_can_forget_all_memories(tmp_path):
     assert assistant.get_memories() == []
 
     assistant.close()
+
+
+def test_assistant_searches_memories_using_conversation_context(
+    tmp_path,
+):
+    database = MemoryDatabase(str(tmp_path / "memory.db"))
+    manager = MemoryManager(database)
+
+    manager.remember(
+        MemoryCandidate(
+            key="pet_dog",
+            content="User has a dog named Max.",
+        )
+    )
+
+    extractor = Mock()
+    extractor.extract.return_value = []
+
+    assistant = Assistant(
+        memory_manager=manager,
+        memory_extractor=extractor,
+    )
+
+    assistant.client.chat.completions.create = Mock(
+        side_effect=[
+            create_response("Max sounds great."),
+            create_response("A birthday present could be a new toy."),
+        ]
+    )
+
+    assistant.chat("My dog's name is Max.")
+    assistant.chat("What should I get him for his birthday?")
+
+    request = (
+        assistant.client
+        .chat.completions
+        .create
+        .call_args
+    )
+
+    messages = request.kwargs["messages"]
+
+    assert messages[0]["role"] == "system"
+
+    assert (
+        "User has a dog named Max."
+        in messages[0]["content"]
+    )
+
+    assistant.close()

@@ -43,7 +43,11 @@ class Assistant:
 
         self.conversation.add_user_message(message)
 
-        relevant_memories = self.memory.search(message)
+        memory_query = "\n".join(
+            self.conversation.get_user_messages()
+        )
+
+        relevant_memories = self.memory.search(memory_query)
 
         messages = self.message_builder.build(
             conversation_messages=(

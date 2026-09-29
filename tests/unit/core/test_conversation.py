@@ -75,3 +75,24 @@ def test_get_messages_returns_copy():
             "content": "Hello.",
         }
     ]
+
+
+def test_get_user_messages_returns_only_user_messages():
+    conversation = Conversation()
+
+    conversation.add_user_message(
+        "My dog's name is Max."
+    )
+
+    conversation.add_assistant_message(
+        "Nice to meet Max!"
+    )
+
+    conversation.add_user_message(
+        "He is five years old."
+    )
+
+    assert conversation.get_user_messages() == [
+        "My dog's name is Max.",
+        "He is five years old.",
+    ]

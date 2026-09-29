@@ -20,3 +20,10 @@ class Conversation:
 
     def get_messages(self) -> list[dict[str, str]]:
         return list(self.messages)
+
+    def get_user_messages(self) -> list[str]:
+        return [
+            message["content"]
+            for message in self.messages
+            if message["role"] == "user"
+        ]
