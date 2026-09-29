@@ -1,11 +1,10 @@
 from types import SimpleNamespace
 from unittest.mock import Mock
-
 from memory.candidate import MemoryCandidate
 from memory.database import MemoryDatabase
 from memory.manager import MemoryManager
-
 from assistant.core.assistant import Assistant
+from memory.extractor import MemoryExtractionError
 
 
 def create_response(content: str):
@@ -423,6 +422,52 @@ def test_assistant_searches_memories_using_conversation_context(
     assert (
         "User has a dog named Max."
         in messages[0]["content"]
+    )
+
+    assistant.close()
+
+
+def test_assistant_continues_when_memory_extraction_fails(
+    tmp_path,
+):
+    database = MemoryDatabase(str(tmp_path / "memory.db"))
+    manager = MemoryManager(database)
+
+    extractor = Mock()
+    extractor.extract.side_effect = MemoryExtractionError(
+        "Invalid JSON."
+    )
+
+    assistant = Assistant(
+        memory_manager=manager,
+        memory_extractor=extractor,
+    )
+
+    assistant.client.chat.completions.create = Mock(
+        return_value=create_response("I can still help.")
+    )
+
+    response = assistant.chat(
+        "What is the capital of France?"
+    )
+
+    assert response == "I can still help."
+
+    assert assistant.conversation.get_messages() == [
+        {
+            "role": "user",
+            "content": "What is the capital of France?",
+        },
+        {
+            "role": "assistant",
+            "content": "I can still help.",
+        },
+    ]
+
+    assert assistant.get_memories() == []
+
+    extractor.extract.assert_called_once_with(
+        "What is the capital of France?"
     )
 
     assistant.close()

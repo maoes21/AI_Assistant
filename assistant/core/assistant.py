@@ -1,8 +1,11 @@
 from assistant.core.conversation import Conversation
 from assistant.core.llm import LLMClient
 from assistant.core.message_builder import MessageBuilder
-from memory.extractor import MemoryExtractor
 from memory.manager import MemoryManager
+from memory.extractor import (
+    MemoryExtractionError,
+    MemoryExtractor,
+)
 
 
 class Assistant:
@@ -36,7 +39,12 @@ class Assistant:
         )
 
     def chat(self, message: str) -> str:
-        memory_candidates = self.memory_extractor.extract(message)
+        try:
+            memory_candidates = self.memory_extractor.extract(
+                message
+            )
+        except MemoryExtractionError:
+            memory_candidates = []
 
         for candidate in memory_candidates:
             self.memory.remember(candidate)
