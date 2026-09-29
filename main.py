@@ -72,12 +72,12 @@ def main():
                 target = parts[1].strip()
 
                 if target.lower() == "all":
-                    assistant.memory.forget_all()
+                    assistant.forget_all()
                     print("Assistant: All memories forgotten.")
                     continue
 
                 try:
-                    assistant.memory.forget(target)
+                    assistant.forget(target)
                 except ValueError as error:
                     print(f"Assistant: {error}")
                     continue

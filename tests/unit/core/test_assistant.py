@@ -329,3 +329,50 @@ def test_assistant_preserves_conversation_messages(
     ]
 
     assistant.close()
+
+
+def test_assistant_can_forget_memory(tmp_path):
+    database = MemoryDatabase(str(tmp_path / "memory.db"))
+    manager = MemoryManager(database)
+
+    assistant = Assistant(memory_manager=manager)
+
+    assistant.remember(
+        MemoryCandidate(
+            key="favorite_color",
+            content="My favorite color is green.",
+        )
+    )
+
+    assistant.forget("favorite_color")
+
+    assert assistant.get_memories() == []
+
+    assistant.close()
+
+
+def test_assistant_can_forget_all_memories(tmp_path):
+    database = MemoryDatabase(str(tmp_path / "memory.db"))
+    manager = MemoryManager(database)
+
+    assistant = Assistant(memory_manager=manager)
+
+    assistant.remember(
+        MemoryCandidate(
+            key="favorite_color",
+            content="My favorite color is green.",
+        )
+    )
+
+    assistant.remember(
+        MemoryCandidate(
+            key="pet_dog",
+            content="My dog is named Max.",
+        )
+    )
+
+    assistant.forget_all()
+
+    assert assistant.get_memories() == []
+
+    assistant.close()

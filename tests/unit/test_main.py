@@ -120,7 +120,7 @@ def test_main_can_forget_memory(capsys):
 
     assert "Memory forgotten." in output
 
-    assistant.memory.forget.assert_called_once_with(
+    assistant.forget(
         "favorite_color"
     )
 
@@ -144,7 +144,7 @@ def test_main_can_forget_all_memories(capsys):
 
     assert "All memories forgotten." in output
 
-    assistant.memory.forget_all.assert_called_once()
+    assistant.forget_all.assert_called_once()
 
     assistant.close.assert_called_once()
 

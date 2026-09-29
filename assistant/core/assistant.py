@@ -68,3 +68,9 @@ class Assistant:
 
     def close(self) -> None:
         self.memory.close()
+
+    def forget(self, key: str) -> None:
+        self.memory.forget(key)
+
+    def forget_all(self) -> None:
+        self.memory.forget_all()
