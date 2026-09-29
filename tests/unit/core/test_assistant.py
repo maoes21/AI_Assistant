@@ -1,5 +1,6 @@
 from types import SimpleNamespace
 from unittest.mock import Mock
+
 from memory.candidate import MemoryCandidate
 from memory.database import MemoryDatabase
 from memory.manager import MemoryManager
@@ -147,7 +148,8 @@ def test_assistant_stores_extracted_memory_candidates(tmp_path):
     ]
 
     extractor.extract.assert_called_once_with(
-        "I'm Alex and I live in Denmark."
+        "I'm Alex and I live in Denmark.",
+        existing_memories=[],
     )
 
     assistant.close()
@@ -176,7 +178,8 @@ def test_assistant_does_not_store_when_extractor_finds_nothing(
     assert assistant.get_memories() == []
 
     extractor.extract.assert_called_once_with(
-        "What is the capital of France?"
+        "What is the capital of France?",
+        existing_memories=[],
     )
 
     assistant.close()
@@ -467,7 +470,8 @@ def test_assistant_continues_when_memory_extraction_fails(
     assert assistant.get_memories() == []
 
     extractor.extract.assert_called_once_with(
-        "What is the capital of France?"
+        "What is the capital of France?",
+        existing_memories=[],
     )
 
     assistant.close()

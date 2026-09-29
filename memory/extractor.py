@@ -4,6 +4,10 @@ from assistant.core.llm import LLMClient
 from memory.candidate import MemoryCandidate
 
 
+class MemoryExtractionError(Exception):
+    pass
+
+
 class MemoryExtractor:
     def __init__(
         self,
@@ -11,11 +15,33 @@ class MemoryExtractor:
     ):
         self.llm = llm
 
-    def extract(self, message: str) -> list[MemoryCandidate]:
+    def extract(
+        self,
+        message: str,
+        existing_memories: list[str] | None = None,
+    ) -> list[MemoryCandidate]:
         message = message.strip()
 
         if not message:
             return []
+
+        existing_memories = existing_memories or []
+
+        existing_memory_context = ""
+
+        if existing_memories:
+            existing_memory_context = (
+                "\n\nHere are the user's existing memories:\n"
+                + "\n".join(
+                    f"- {memory}"
+                    for memory in existing_memories
+                )
+                + (
+                    "\n\nIf the user's message updates one of "
+                    "these memories, use the same key as the "
+                    "existing memory."
+                )
+            )
 
         response = self.llm.chat(
             [
@@ -44,16 +70,23 @@ class MemoryExtractor:
                         "For example, if the user says "
                         "\"My favorite programming language is Python.\", "
                         "return content such as "
-                        "\"My favorite programming language is Python.\" "
+                        "\"User's favorite programming language is Python.\" "
                         "Do NOT return only \"Python\".\n\n"
                         "If the user says "
                         "\"I have a dog named Max and I live in Denmark.\", "
                         "extract both facts separately, for example:\n"
-                        "- \"My dog's name is Max.\"\n"
-                        "- \"I live in Denmark.\"\n\n"
+                        "- \"User's dog's name is Max.\"\n"
+                        "- \"User lives in Denmark.\"\n\n"
                         "Use the same key whenever the same fact is "
-                        "mentioned again. For example, the user's favorite "
-                        "color should use the key 'favorite_color'.\n\n"
+                        "mentioned again or updated. For example, the "
+                        "user's favorite color should use the key "
+                        "'favorite_color'.\n\n"
+                        "When an existing memory represents the same "
+                        "fact as the user's new message, update that "
+                        "memory by returning its existing key with the "
+                        "new content. Do not create a second key for "
+                        "the same fact."
+                        f"{existing_memory_context}\n\n"
                         "Return ONLY valid JSON in this exact format:\n"
                         "{\"memories\": ["
                         "{\"key\": \"example_key\", "
@@ -122,7 +155,3 @@ class MemoryExtractor:
             )
 
         return candidates
-
-
-class MemoryExtractionError(Exception):
-    pass

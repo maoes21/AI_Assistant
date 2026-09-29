@@ -1,5 +1,6 @@
 import pytest
 from unittest.mock import Mock
+
 from memory.extractor import (
     MemoryExtractionError,
     MemoryExtractor,
@@ -76,6 +77,57 @@ def test_extractor_returns_no_memories_for_empty_message():
     assert extractor.extract("") == []
 
     llm.chat.assert_not_called()
+
+
+def test_extractor_passes_existing_memories_to_model():
+    llm = Mock()
+
+    llm.chat.return_value = '{"memories": []}'
+
+    extractor = MemoryExtractor(llm)
+
+    extractor.extract(
+        "Actually, I prefer blue now.",
+        existing_memories=[
+            "User's favorite color is green.",
+            "User lives in Denmark.",
+        ],
+    )
+
+    request = llm.chat.call_args
+
+    messages = request.args[0]
+
+    system_prompt = messages[0]["content"]
+
+    assert "User's favorite color is green." in system_prompt
+    assert "User lives in Denmark." in system_prompt
+    assert (
+        "use the same key as the existing memory"
+        in system_prompt
+    )
+
+
+def test_extractor_works_without_existing_memories():
+    llm = Mock()
+
+    llm.chat.return_value = '{"memories": []}'
+
+    extractor = MemoryExtractor(llm)
+
+    extractor.extract(
+        "What is the capital of France?"
+    )
+
+    request = llm.chat.call_args
+
+    messages = request.args[0]
+
+    system_prompt = messages[0]["content"]
+
+    assert "Here are the user's existing memories:" not in (
+        system_prompt
+    )
 
 
 def test_extractor_raises_for_invalid_json():
