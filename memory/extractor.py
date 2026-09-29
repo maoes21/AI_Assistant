@@ -76,13 +76,22 @@ class MemoryExtractor:
 
         try:
             data = json.loads(response)
-        except json.JSONDecodeError:
-            return []
+        except json.JSONDecodeError as error:
+            raise MemoryExtractionError(
+                "Memory extractor returned invalid JSON."
+            ) from error
 
-        memories = data.get("memories", [])
+        if not isinstance(data, dict):
+            raise MemoryExtractionError(
+                "Memory extractor returned an invalid response."
+            )
+
+        memories = data.get("memories")
 
         if not isinstance(memories, list):
-            return []
+            raise MemoryExtractionError(
+                "Memory extractor response is missing a memories list."
+            )
 
         candidates = []
 
@@ -113,3 +122,7 @@ class MemoryExtractor:
             )
 
         return candidates
+
+
+class MemoryExtractionError(Exception):
+    pass

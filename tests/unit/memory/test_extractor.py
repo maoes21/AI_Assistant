@@ -1,6 +1,9 @@
+import pytest
 from unittest.mock import Mock
-
-from memory.extractor import MemoryExtractor
+from memory.extractor import (
+    MemoryExtractionError,
+    MemoryExtractor,
+)
 
 
 def test_extractor_returns_memory_candidates():
@@ -75,15 +78,27 @@ def test_extractor_returns_no_memories_for_empty_message():
     llm.chat.assert_not_called()
 
 
-def test_extractor_handles_invalid_json():
+def test_extractor_raises_for_invalid_json():
     llm = Mock()
 
     llm.chat.return_value = "This is not valid JSON."
 
     extractor = MemoryExtractor(llm)
 
-    candidates = extractor.extract(
-        "My favorite color is green."
-    )
+    with pytest.raises(MemoryExtractionError):
+        extractor.extract(
+            "My favorite color is green."
+        )
 
-    assert candidates == []
+
+def test_extractor_raises_for_invalid_response_structure():
+    llm = Mock()
+
+    llm.chat.return_value = '{"memories": "not a list"}'
+
+    extractor = MemoryExtractor(llm)
+
+    with pytest.raises(MemoryExtractionError):
+        extractor.extract(
+            "My favorite color is green."
+        )
