@@ -1,10 +1,10 @@
 import pytest
 from unittest.mock import Mock
-
 from memory.extractor import (
     MemoryExtractionError,
     MemoryExtractor,
 )
+from memory.record import MemoryRecord
 
 
 def test_extractor_returns_memory_candidates():
@@ -79,7 +79,7 @@ def test_extractor_returns_no_memories_for_empty_message():
     llm.chat.assert_not_called()
 
 
-def test_extractor_passes_existing_memories_to_model():
+def test_extractor_passes_existing_memory_keys_and_content_to_model():
     llm = Mock()
 
     llm.chat.return_value = '{"memories": []}'
@@ -89,8 +89,14 @@ def test_extractor_passes_existing_memories_to_model():
     extractor.extract(
         "Actually, I prefer blue now.",
         existing_memories=[
-            "User's favorite color is green.",
-            "User lives in Denmark.",
+            MemoryRecord(
+                key="favorite_color",
+                content="User's favorite color is green.",
+            ),
+            MemoryRecord(
+                key="location",
+                content="User lives in Denmark.",
+            ),
         ],
     )
 
@@ -100,10 +106,12 @@ def test_extractor_passes_existing_memories_to_model():
 
     system_prompt = messages[0]["content"]
 
-    assert "User's favorite color is green." in system_prompt
-    assert "User lives in Denmark." in system_prompt
+    assert "key: favorite_color" in system_prompt
+    assert "content: User's favorite color is green." in system_prompt
+    assert "key: location" in system_prompt
+    assert "content: User lives in Denmark." in system_prompt
     assert (
-        "use the same key as the existing memory"
+        "return the exact existing key"
         in system_prompt
     )
 

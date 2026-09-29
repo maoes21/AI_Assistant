@@ -39,7 +39,7 @@ class Assistant:
         )
 
     def chat(self, message: str) -> str:
-        existing_memories = self.memory.get_all()
+        existing_memories = self.memory.get_all_records()
 
         try:
             memory_candidates = self.memory_extractor.extract(

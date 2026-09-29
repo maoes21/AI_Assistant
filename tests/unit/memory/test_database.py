@@ -453,3 +453,22 @@ def test_search_stop_words_do_not_affect_relevance_ranking(
     ]
 
     database.close()
+
+
+def test_database_returns_memory_records():
+    database = MemoryDatabase(":memory:")
+
+    database.add_memory(
+        key="favorite_color",
+        content="User's favorite color is green.",
+    )
+
+    records = database.get_memory_records()
+
+    assert len(records) == 1
+    assert records[0].key == "favorite_color"
+    assert records[0].content == (
+        "User's favorite color is green."
+    )
+
+    database.close()

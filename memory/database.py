@@ -1,6 +1,8 @@
 import sqlite3
 from pathlib import Path
 
+from memory.record import MemoryRecord
+
 
 class MemoryDatabase:
     _STOP_WORDS = {
@@ -35,14 +37,8 @@ class MemoryDatabase:
 
     def __init__(self, database_path: str = "data/memory.db"):
         self.database_path = Path(database_path)
-
-        self.database_path.parent.mkdir(
-            parents=True,
-            exist_ok=True,
-        )
-
+        self.database_path.parent.mkdir(parents=True, exist_ok=True)
         self.connection = sqlite3.connect(self.database_path)
-
         self._create_tables()
 
     def _create_tables(self) -> None:
@@ -74,7 +70,6 @@ class MemoryDatabase:
               AND name = 'memories'
             """
         )
-
         return cursor.fetchone() is not None
 
     def _get_columns(self) -> set[str]:
@@ -83,11 +78,7 @@ class MemoryDatabase:
             PRAGMA table_info(memories)
             """
         )
-
-        return {
-            row[1]
-            for row in cursor.fetchall()
-        }
+        return {row[1] for row in cursor.fetchall()}
 
     def _create_memory_table(self) -> None:
         self.connection.execute(
@@ -101,7 +92,6 @@ class MemoryDatabase:
             )
             """
         )
-
         self.connection.commit()
 
     def _migrate_memory_table(self) -> None:
@@ -157,12 +147,7 @@ class MemoryDatabase:
                 """
             )
 
-        self.connection.execute(
-            """
-            DROP TABLE memories_old
-            """
-        )
-
+        self.connection.execute("DROP TABLE memories_old")
         self.connection.commit()
 
     def add_memory(self, key: str, content: str) -> None:
@@ -179,7 +164,6 @@ class MemoryDatabase:
             """,
             (key, content),
         )
-
         self.connection.commit()
 
     def get_memories(self) -> list[str]:
@@ -190,8 +174,24 @@ class MemoryDatabase:
             ORDER BY created_at ASC
             """
         )
-
         return [row[0] for row in cursor.fetchall()]
+
+    def get_memory_records(self) -> list[MemoryRecord]:
+        cursor = self.connection.execute(
+            """
+            SELECT key, content
+            FROM memories
+            ORDER BY created_at ASC
+            """
+        )
+
+        return [
+            MemoryRecord(
+                key=row[0],
+                content=row[1],
+            )
+            for row in cursor.fetchall()
+        ]
 
     @classmethod
     def _tokenize(cls, text: str) -> list[str]:
@@ -223,17 +223,12 @@ class MemoryDatabase:
             """
         )
 
-        memories = [
-            row[0]
-            for row in cursor.fetchall()
-        ]
+        memories = [row[0] for row in cursor.fetchall()]
 
         scored_memories = []
 
         for index, memory in enumerate(memories):
-            memory_words = set(
-                self._tokenize(memory)
-            )
+            memory_words = set(self._tokenize(memory))
 
             score = sum(
                 word in memory_words
@@ -241,19 +236,10 @@ class MemoryDatabase:
             )
 
             if score > 0:
-                scored_memories.append(
-                    (
-                        score,
-                        index,
-                        memory,
-                    )
-                )
+                scored_memories.append((score, index, memory))
 
         scored_memories.sort(
-            key=lambda item: (
-                -item[0],
-                item[1],
-            )
+            key=lambda item: (-item[0], item[1])
         )
 
         return [
@@ -269,16 +255,10 @@ class MemoryDatabase:
             """,
             (key,),
         )
-
         self.connection.commit()
 
     def delete_all_memories(self) -> None:
-        self.connection.execute(
-            """
-            DELETE FROM memories
-            """
-        )
-
+        self.connection.execute("DELETE FROM memories")
         self.connection.commit()
 
     def close(self) -> None:

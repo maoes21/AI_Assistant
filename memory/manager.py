@@ -2,6 +2,7 @@ import re
 
 from memory.candidate import MemoryCandidate
 from memory.database import MemoryDatabase
+from memory.record import MemoryRecord
 
 
 class MemoryManager:
@@ -25,12 +26,14 @@ class MemoryManager:
     def get_all(self) -> list[str]:
         return self.database.get_memories()
 
+    def get_all_records(self) -> list[MemoryRecord]:
+        return self.database.get_memory_records()
+
     def search(self, query: str) -> list[str]:
         return self.database.search_memories(query)
 
     def forget(self, key: str) -> None:
         key = self._normalize_key(key)
-
         self.database.delete_memory(key)
 
     def forget_all(self) -> None:

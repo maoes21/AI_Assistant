@@ -2,6 +2,7 @@ import json
 
 from assistant.core.llm import LLMClient
 from memory.candidate import MemoryCandidate
+from memory.record import MemoryRecord
 
 
 class MemoryExtractionError(Exception):
@@ -18,7 +19,7 @@ class MemoryExtractor:
     def extract(
         self,
         message: str,
-        existing_memories: list[str] | None = None,
+        existing_memories: list[MemoryRecord] | None = None,
     ) -> list[MemoryCandidate]:
         message = message.strip()
 
@@ -33,13 +34,15 @@ class MemoryExtractor:
             existing_memory_context = (
                 "\n\nHere are the user's existing memories:\n"
                 + "\n".join(
-                    f"- {memory}"
+                    f"- key: {memory.key}\n"
+                    f"  content: {memory.content}"
                     for memory in existing_memories
                 )
                 + (
                     "\n\nIf the user's message updates one of "
-                    "these memories, use the same key as the "
-                    "existing memory."
+                    "these memories, return the exact existing key "
+                    "and the updated content. Do not create a new "
+                    "key for the same fact."
                 )
             )
 
@@ -77,15 +80,14 @@ class MemoryExtractor:
                         "extract both facts separately, for example:\n"
                         "- \"User's dog's name is Max.\"\n"
                         "- \"User lives in Denmark.\"\n\n"
-                        "Use the same key whenever the same fact is "
-                        "mentioned again or updated. For example, the "
-                        "user's favorite color should use the key "
-                        "'favorite_color'.\n\n"
-                        "When an existing memory represents the same "
-                        "fact as the user's new message, update that "
-                        "memory by returning its existing key with the "
-                        "new content. Do not create a second key for "
-                        "the same fact."
+                        "Use a stable key for each specific fact. For "
+                        "example, the user's favorite color should use "
+                        "the key 'favorite_color'.\n\n"
+                        "When an existing memory represents the same fact "
+                        "as the user's new message, update that memory by "
+                        "returning its exact existing key with the new "
+                        "content. Do not create a second key for the same "
+                        "fact."
                         f"{existing_memory_context}\n\n"
                         "Return ONLY valid JSON in this exact format:\n"
                         "{\"memories\": ["
